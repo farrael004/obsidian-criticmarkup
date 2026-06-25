@@ -1,5 +1,6 @@
 export * from "./range-operations";
 export * from "./range-parser";
+export * from "./range-offset";
 export * from "./range-state";
 export * from "./range-grouping";
 export * from "./range-create";

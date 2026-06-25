@@ -1,11 +1,12 @@
 import {DocInput} from "@codemirror/language";
 import {EditorState, StateField} from "@codemirror/state";
 import {type ChangedRange, type Tree, TreeFragment} from "@lezer/common";
-import {type Interval, Node} from "@flatten-js/interval-tree";
+import {type Interval} from "@flatten-js/interval-tree";
 
 import { CommentRange, CriticMarkupRange, CriticMarkupRanges, SuggestionType } from "../ranges";
 
 import {cursorGenerateRanges} from "./range-parser";
+import {applyOffsetsToRangeTree} from "./range-offset";
 import {criticmarkupLanguage} from "@fevol/lang-criticmarkup";
 import {pluginSettingsField} from "../../uix";
 import {fullReloadEffect} from "../../settings";
@@ -88,26 +89,8 @@ export const rangeParser: StateField<ParserData> = StateField.define({
                 dangling_comments.delete(deleted_range.from);
         }
 
-        let cumulative_offset = 0;
-
         // apply-offsets: 2.72-3.70 ms
-        const nil_node = value.ranges.tree.nil_node;
-        function visitNode(node: Node<CriticMarkupRange>) {
-            if (node != null && node != nil_node) {
-                visitNode(node.left);
-                while (offsets.length && node.item.key.low >= offsets[0][0])
-                    cumulative_offset += offsets.shift()![1];
-                node.item.value.apply_offset(cumulative_offset);
-                node.item.key.low = node.item.value.from;
-                node.item.key.high = node.item.value.to;
-                visitNode(node.right);
-                if (node.left != nil_node)
-                    node.max.low = node.left.max.low;
-                if (node.right != nil_node)
-                    node.max.high = node.right.max.high;
-            }
-        }
-        visitNode(value.ranges.tree.root!);
+        applyOffsetsToRangeTree(value.ranges.tree, offsets);
         const inserted_ranges = Array.from(inserted_set.values());
 
         // insert-new-ranges: <0.01 - 0.05 ms
