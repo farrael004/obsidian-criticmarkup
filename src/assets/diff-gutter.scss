@@ -46,6 +46,16 @@
   height: 100%;
 }
 
+// EXPL: On touch devices, the gutter markers double as the tap target for accepting/rejecting
+//       changes, so they need to be wide enough to hit with a finger
+body.is-mobile {
+  .cmtr-diff-gutter-addition,
+  .cmtr-diff-gutter-deletion,
+  .cmtr-diff-gutter-substitution {
+    width: 16px;
+  }
+}
+
 .cmtr-diff-gutter-top {
   // TODO: Figure out a better way to do this
   border-top: 1px solid var(--background-primary);

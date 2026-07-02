@@ -20,6 +20,12 @@
   transition: width 400ms ease-in-out;
 }
 
+// EXPL: Hard cap on touch devices so the gutter never covers more than half the viewport,
+//       even when the device rotates before the width is recomputed
+body.is-mobile .cmtr-anno-gutter {
+  max-width: 50vw;
+}
+
 .cmtr-anno-gutter-resizing .cmtr-anno-gutter {
   transition: width 50ms ease-out;
 }
