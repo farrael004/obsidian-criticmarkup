@@ -1,5 +1,6 @@
-import { type EventRef, MarkdownView, Menu, setIcon, WorkspaceLeaf } from "obsidian";
+import { type EventRef, MarkdownView, Menu, Platform, setIcon, WorkspaceLeaf } from "obsidian";
 import type CommentatorPlugin from "../../main";
+import { registerMenuActivation } from "../../util/obsidian-util";
 
 export class HeaderButton {
 	active_mapping: WeakMap<MarkdownView, {
@@ -93,6 +94,10 @@ export class HeaderButton {
 
 			const { tooltip, text } = this.states[value];
 			const button = view.addAction(this.states[(value + 1) % this.states.length].icon, tooltip, async () => {
+				// EXPL: On mobile a tap opens the state menu (via registerMenuActivation below) instead of
+				//       blindly cycling through the states, as the tooltips explaining the cycle are not visible on touch devices
+				if (Platform.isMobile) return;
+
 				const value = (this.getvalue(view) + 1) % this.states.length;
 				this.onchange(view, value);
 			});
@@ -103,7 +108,7 @@ export class HeaderButton {
 				button.parentElement.insertBefore(status, button);
 			}
 
-			button.oncontextmenu = (e: MouseEvent) => {
+			registerMenuActivation(button, (e: MouseEvent) => {
 				const menu = new Menu();
 				const current_value = this.getvalue(view);
 				for (const [i, { icon, text }] of this.states.entries()) {
@@ -117,7 +122,7 @@ export class HeaderButton {
 					});
 				}
 				menu.showAtMouseEvent(e);
-			};
+			});
 
 			this.active_mapping.set(view, { button, status, event });
 		}

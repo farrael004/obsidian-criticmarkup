@@ -6,6 +6,7 @@ import { addCommentToView, CM_All_Brackets, create_range, CommentRange, CriticMa
 import { annotationGutterFocusAnnotation } from "../gutters";
 import { pluginSettingsField } from "../../uix";
 
+import { registerMenuActivation } from "../../../util/obsidian-util";
 import { PreviewEditor } from "../../../ui/preview-editor";
 import { EmbeddableMarkdownEditor } from "../../../ui/embeddable-editor";
 import { createMetadataInfoElement } from "../../../ui/snippets";
@@ -286,7 +287,9 @@ export class CommentIconWidget extends WidgetType {
 
 		if (this.annotation_gutter) {
 			this.icon.onclick = (e) => this.focusAnnotation(e);
-			this.icon.oncontextmenu = (e) => {
+			// EXPL: On mobile a tap both focuses the annotation (via the onclick above) and opens the menu,
+			//       since the contextmenu event is unreliable on touch devices
+			registerMenuActivation(this.icon, (e) => {
 				e.preventDefault();
 
 				const menu = new Menu();
@@ -322,7 +325,7 @@ export class CommentIconWidget extends WidgetType {
 				});
 
 				menu.showAtMouseEvent(e);
-			};
+			});
 		}
 
 		if (this.range.length) {

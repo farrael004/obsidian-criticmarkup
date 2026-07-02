@@ -170,6 +170,30 @@ export function showProgressBarNotice(initialMessage: string, finishedMessage: s
 	}
 }
 
+/**
+ * Register the event with which a menu is activated on the given element:
+ * the contextmenu event (right-click) on desktop, a regular tap (click) on mobile
+ * @param element - Element on which the menu should be activated
+ * @param openMenu - Callback that constructs and shows the menu
+ * @param shouldIgnoreTap - Mobile-only: return true to ignore a tap and not open the menu (e.g. while editing)
+ * @remark On touch devices the contextmenu event is unreliable (iOS webviews do not fire it on long-press),
+ *         so on mobile a regular tap activates the menu instead
+ */
+export function registerMenuActivation(
+	element: HTMLElement,
+	openMenu: (e: MouseEvent) => void,
+	shouldIgnoreTap?: (e: MouseEvent) => boolean,
+) {
+	if (Platform.isMobile) {
+		element.addEventListener("click", (e: MouseEvent) => {
+			if (shouldIgnoreTap?.(e)) return;
+			openMenu(e);
+		});
+	} else {
+		element.addEventListener("contextmenu", openMenu);
+	}
+}
+
 export function menuSingleChoiceExclusive<T>(
 	menu: Menu,
 	current_value: T,
