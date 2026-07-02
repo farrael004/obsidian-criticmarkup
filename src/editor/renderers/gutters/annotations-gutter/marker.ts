@@ -12,6 +12,7 @@ import { annotationGutterIncludedTypes, annotationGutterIncludedTypesState } fro
 import { annotationGutterFocusThreadAnnotation, annotationGutterFoldAnnotation } from "./annotation-gutter";
 
 import { stickyContextMenuPatch } from "../../../../patches";
+import { registerMenuActivation } from "../../../../util/obsidian-util";
 import { pluginSettingsField } from "../../../uix";
 import { createMetadataInfoElement } from "../../../../ui/snippets";
 
@@ -33,7 +34,12 @@ class AnnotationNode extends Component {
 		this.annotation_container = this.marker.annotation_thread.createDiv({ cls: "cmtr-anno-gutter-annotation" });
 		this.annotation_container.addEventListener("blur", this.renderPreview.bind(this));
 		this.annotation_container.addEventListener("dblclick", this.renderSource.bind(this));
-		this.annotation_container.addEventListener("contextmenu", this.onCommentContextmenu.bind(this));
+		registerMenuActivation(
+			this.annotation_container,
+			this.onCommentContextmenu.bind(this),
+			// EXPL: Taps inside the embedded editor while editing should not open the menu
+			() => this.currentMode === "source",
+		);
 
 		if (this.range.metadata) {
 			this.metadata_view = createMetadataInfoElement(this.range);
