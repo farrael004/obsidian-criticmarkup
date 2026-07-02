@@ -1,7 +1,7 @@
 import { type EditorState, Range, RangeSet, StateField } from "@codemirror/state";
 import { EditorView, GutterMarker } from "@codemirror/view";
 
-import { Component, editorEditorField, editorInfoField, MarkdownRenderer, Menu, Notice } from "obsidian";
+import { Component, editorEditorField, editorInfoField, MarkdownRenderer, Menu, Notice, Platform } from "obsidian";
 
 import { EmbeddableMarkdownEditor } from "../../../../ui/embeddable-editor";
 
@@ -33,7 +33,16 @@ class AnnotationNode extends Component {
 		this.annotation_container = this.marker.annotation_thread.createDiv({ cls: "cmtr-anno-gutter-annotation" });
 		this.annotation_container.addEventListener("blur", this.renderPreview.bind(this));
 		this.annotation_container.addEventListener("dblclick", this.renderSource.bind(this));
-		this.annotation_container.addEventListener("contextmenu", this.onCommentContextmenu.bind(this));
+		// EXPL: On touch devices the contextmenu event is unreliable, so a regular tap opens the menu instead
+		if (Platform.isMobile) {
+			this.annotation_container.addEventListener("click", (e: MouseEvent) => {
+				// EXPL: Taps inside the embedded editor while editing should not open the menu
+				if (this.currentMode === "source") return;
+				this.onCommentContextmenu(e);
+			});
+		} else {
+			this.annotation_container.addEventListener("contextmenu", this.onCommentContextmenu.bind(this));
+		}
 
 		if (this.range.metadata) {
 			this.metadata_view = createMetadataInfoElement(this.range);
@@ -166,7 +175,10 @@ class AnnotationNode extends Component {
 
 	onCommentContextmenu(e: MouseEvent) {
 		e.preventDefault();
-		e.stopPropagation();
+		// EXPL: A mobile tap should still bubble up to the thread's click handler,
+		//       so the annotation gets focused and the markup highlighted as usual
+		if (e.type !== "click")
+			e.stopPropagation();
 
 		stickyContextMenuPatch(true);
 

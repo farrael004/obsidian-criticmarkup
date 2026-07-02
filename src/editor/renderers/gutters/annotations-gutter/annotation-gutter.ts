@@ -10,7 +10,7 @@
 import {Annotation, type Extension, Facet} from "@codemirror/state";
 import { BlockInfo, EditorView, GutterMarker, ViewUpdate } from "@codemirror/view";
 
-import { debounce, editorInfoField, setIcon } from "obsidian";
+import { debounce, editorInfoField, Platform, setIcon } from "obsidian";
 import {
 	createGutter,
 	createGutterViewPlugin,
@@ -356,12 +356,13 @@ class AnnotationSingleGutterView extends SingleGutterView {
 
 		this.folded = config.foldState;
 		this.width = config.width;
-		// EXPL: If the gutter takes up too much space, fold it by default (even if the user has allowed it to be unfoled in the past)
-		// if (this.view.dom.clientWidth - this.width < 200) {
-		// 	this.folded = true;
-		// }
 		// TODO: This is specifically done for popovers, there may be a better fix for this
 		if (this.view.dom.parentElement?.parentElement?.parentElement?.classList.contains("markdown-embed")) {
+			this.folded = true;
+		}
+		// EXPL: On phones the gutter would cover most of the viewport, so it starts folded;
+		//       only forced when the fold button exists as a way to open it again
+		if (Platform.isPhone && config.includeFoldButton) {
 			this.folded = true;
 		}
 
@@ -372,9 +373,9 @@ class AnnotationSingleGutterView extends SingleGutterView {
 		if ((this.hide_on_empty && view.state.field(annotationGutterMarkers).size === 0) || this.folded) {
 			this.dom.style.width = "0";
 		} else {
-			this.dom.style.width = this.width + "px";
+			this.dom.style.width = this.clampedWidth() + "px";
 		}
-		this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.folded ? "0px" : this.width + "px");
+		this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.folded ? "0px" : this.clampedWidth() + "px");
 		this.gutterDom.style.marginInlineStart = this.folded ? "0" : ANNOTATION_GUTTER_MARGIN + "px";
 		this.gutter_position = this.view.scrollDOM.getBoundingClientRect().right - this.view.contentDOM.getBoundingClientRect().right + ANNOTATION_GUTTER_MARGIN;
 
@@ -385,6 +386,16 @@ class AnnotationSingleGutterView extends SingleGutterView {
 		if (this.add_resize_handle) {
 			this.createResizeHandle();
 		}
+	}
+
+	/**
+	 * The gutter width to actually render, capped on mobile so the note content stays legible
+	 */
+	clampedWidth(): number {
+		if (Platform.isMobile) {
+			return Math.min(this.width, Math.round(this.view.dom.win.innerWidth * 0.5));
+		}
+		return this.width;
 	}
 
 	createFoldButton() {
@@ -416,8 +427,8 @@ class AnnotationSingleGutterView extends SingleGutterView {
 			const setWidth = debounce((width: number) => {
 				this.width = Math.round(Math.max(0, width));
 				this.view.state.field(editorInfoField).app.workspace.requestSaveLayout();
-				this.dom.style.width = this.width + "px";
-				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.width + "px");
+				this.dom.style.width = this.clampedWidth() + "px";
+				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.clampedWidth() + "px");
 
 				// TODO: Improve resizing logic when user has readable line length enabled
 				//       When resizing, .cm-line's width adjust even when not necessary, causing jarring content shifts
@@ -499,14 +510,14 @@ class AnnotationSingleGutterView extends SingleGutterView {
 				});
 			}, { once: true });
 		}
-		this.dom.style.width = this.folded ? "0" : this.width + "px";
+		this.dom.style.width = this.folded ? "0" : this.clampedWidth() + "px";
 		this.gutterDom.style.marginInlineStart = this.folded ? "0" : ANNOTATION_GUTTER_MARGIN + "px";
 
 		if (this.view.state.field(editorInfoField).app.vault.getConfig("readableLineLength")) {
 			// EXPL: Computes the margin before and after the gutter has been folded
 			const readableLineWidth = parseInt(getComputedStyle(this.view.scrollDOM).getPropertyValue("--file-line-width").trim());
 			const marginWithoutGutter = Math.max(0, this.view.scrollDOM.innerWidth - readableLineWidth);
-			const marginWithGutter = Math.max(0, marginWithoutGutter - this.width);
+			const marginWithGutter = Math.max(0, marginWithoutGutter - this.clampedWidth());
 			const newMargin = (this.folded ? marginWithoutGutter : marginWithGutter) / 2;
 			const oldMargin = (this.folded ? marginWithGutter : marginWithoutGutter) / 2;
 
@@ -515,7 +526,7 @@ class AnnotationSingleGutterView extends SingleGutterView {
 			// EXPL: Set the old margin to transition from
 			this.view.scrollDOM.children[0].setAttribute("style", `margin: 0 ${oldMargin}px; transition: margin 0.4s ease-in-out, max-width 0.4s ease-in-out;`);
 			if (!this.folded) {
-				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.width + "px");
+				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.clampedWidth() + "px");
 			}
 
 			setTimeout(() => {
@@ -546,10 +557,10 @@ class AnnotationSingleGutterView extends SingleGutterView {
 			if (width !== undefined) {
 				this.width = width;
 				if (!this.hide_on_empty && !this.folded) {
-					this.dom.style.width = width + "px";
+					this.dom.style.width = this.clampedWidth() + "px";
 					this.setFoldButtonState();
 				}
-				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.width + "px");
+				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.clampedWidth() + "px");
 			}
 			if (fold_status !== undefined) {
 				if (fold_status === null) {
@@ -565,9 +576,9 @@ class AnnotationSingleGutterView extends SingleGutterView {
 				if (this.hide_on_empty && widgets.size === 0) {
 					this.dom.style.width = "0";
 				} else {
-					this.dom.style.width = this.width + "px";
+					this.dom.style.width = this.clampedWidth() + "px";
 				}
-				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.width + "px");
+				this.view.dom.style.setProperty("--cmtr-anno-gutter-width", this.clampedWidth() + "px");
 			}
 			if (fold_button !== undefined) {
 				this.add_fold_button = fold_button;
@@ -609,7 +620,7 @@ class AnnotationSingleGutterView extends SingleGutterView {
 					this.resize_handle_el.style.display = "";
 				}
 				if (!this.folded) {
-					this.dom.style.width = this.width + "px";
+					this.dom.style.width = this.clampedWidth() + "px";
 				}
 			}
 		}
